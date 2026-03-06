@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,15 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user, role } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect when user is authenticated and role is loaded
+  useEffect(() => {
+    if (user && role) {
+      navigate('/');
+    }
+  }, [user, role, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,10 +28,9 @@ export default function Login() {
     try {
       await signIn(email, password);
       toast.success('Welcome back!');
-      navigate('/');
+      // Navigation will happen via AuthContext state change + HomeRedirect
     } catch (err: any) {
       toast.error(err.message || 'Login failed');
-    } finally {
       setLoading(false);
     }
   };
