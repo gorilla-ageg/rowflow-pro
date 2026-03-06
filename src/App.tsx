@@ -15,6 +15,7 @@ import ResetPassword from "./pages/ResetPassword";
 // Onboarding
 import CoachOnboarding from "./pages/onboarding/CoachOnboarding";
 import AthleteOnboarding from "./pages/onboarding/AthleteOnboarding";
+import RoleRecovery from "./pages/onboarding/RoleRecovery";
 
 // Layouts
 import CoachLayout from "./layouts/CoachLayout";
@@ -58,7 +59,7 @@ function HomeRedirect() {
     return <Navigate to="/coach/dashboard" replace />;
   }
   if (role === 'athlete') return <Navigate to="/athlete/today" replace />;
-  return <Navigate to="/landing" replace />;
+  return <Navigate to="/onboarding/role" replace />;
 }
 
 const App = () => (
@@ -79,6 +80,7 @@ const App = () => (
             {/* Onboarding */}
             <Route path="/onboarding/coach" element={<ProtectedRoute requiredRole="coach"><CoachOnboarding /></ProtectedRoute>} />
             <Route path="/onboarding/athlete" element={<ProtectedRoute requiredRole="athlete"><AthleteOnboarding /></ProtectedRoute>} />
+            <Route path="/onboarding/role" element={<ProtectedRoute><RoleRecovery /></ProtectedRoute>} />
 
             {/* Coach */}
             <Route path="/coach" element={<ProtectedRoute requiredRole="coach"><CoachLayout /></ProtectedRoute>}>

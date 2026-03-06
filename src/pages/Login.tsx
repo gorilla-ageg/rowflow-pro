@@ -12,15 +12,15 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, user, role } = useAuth();
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect when user is authenticated and role is loaded
+  // Redirect as soon as session exists; role recovery happens in HomeRedirect when needed
   useEffect(() => {
-    if (user && role) {
+    if (user) {
       navigate('/');
     }
-  }, [user, role, navigate]);
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,9 +28,9 @@ export default function Login() {
     try {
       await signIn(email, password);
       toast.success('Welcome back!');
-      // Navigation will happen via AuthContext state change + HomeRedirect
     } catch (err: any) {
       toast.error(err.message || 'Login failed');
+    } finally {
       setLoading(false);
     }
   };
