@@ -63,7 +63,15 @@ export type Database = {
           weight?: number | null
           year?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "athlete_profiles_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       evening_checkins: {
         Row: {
@@ -99,7 +107,15 @@ export type Database = {
           id?: string
           nutrition?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "evening_checkins_athlete_id_profiles_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       injuries: {
         Row: {
@@ -132,7 +148,15 @@ export type Database = {
           resolved?: boolean | null
           severity?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "injuries_athlete_id_profiles_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -230,7 +254,15 @@ export type Database = {
           sleep_quality?: number | null
           stress?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "morning_checkins_athlete_id_profiles_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -336,6 +368,13 @@ export type Database = {
           studying_tonight?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "post_session_checkins_athlete_id_profiles_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "post_session_checkins_session_id_fkey"
             columns: ["session_id"]
