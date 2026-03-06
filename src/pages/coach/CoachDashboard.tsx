@@ -3,7 +3,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Moon, Zap, AlertTriangle, GraduationCap, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Moon, Zap, AlertTriangle, Users, Copy, Check } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function CoachDashboard() {
   const { user, profile } = useAuth();
@@ -12,6 +14,7 @@ export default function CoachDashboard() {
   const [checkins, setCheckins] = useState<any[]>([]);
   const [injuries, setInjuries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!profile?.team_id) return;
@@ -20,7 +23,7 @@ export default function CoachDashboard() {
         supabase.from('teams').select('*').eq('id', profile.team_id).single(),
         supabase.from('profiles').select('*, athlete_profiles(*)').eq('team_id', profile.team_id).neq('user_id', user!.id),
         supabase.from('morning_checkins').select('*').eq('date', new Date().toISOString().split('T')[0]),
-        supabase.from('injuries').select('*, profiles!injuries_athlete_id_fkey(name)').eq('resolved', false),
+        supabase.from('injuries').select('*, profiles(name)').eq('resolved', false),
       ]);
       if (teamRes.data) setTeam(teamRes.data);
       if (athletesRes.data) setAthletes(athletesRes.data);
@@ -35,6 +38,14 @@ export default function CoachDashboard() {
   const avgEnergy = checkins.length ? (checkins.reduce((s, c) => s + (c.energy || 0), 0) / checkins.length).toFixed(1) : '—';
   const avgStress = checkins.length ? (checkins.reduce((s, c) => s + (c.stress || 0), 0) / checkins.length).toFixed(1) : '—';
 
+  const copyCode = async () => {
+    if (!team?.invite_code) return;
+    await navigator.clipboard.writeText(team.invite_code);
+    setCopied(true);
+    toast.success('Invite code copied!');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Loading…</p></div>;
 
   return (
@@ -42,9 +53,14 @@ export default function CoachDashboard() {
       <div>
         <h1 className="font-display text-2xl font-bold">{team?.name || 'Dashboard'}</h1>
         {team?.invite_code && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Invite code: <span className="font-mono font-semibold text-foreground">{team.invite_code}</span>
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-muted-foreground">
+              Invite code: <span className="font-mono font-semibold text-foreground">{team.invite_code}</span>
+            </p>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={copyCode}>
+              {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -91,7 +107,7 @@ export default function CoachDashboard() {
           <CardContent className="space-y-2">
             {injuries.map((inj: any) => (
               <div key={inj.id} className="flex items-center justify-between text-sm">
-                <span>{(inj as any).profiles?.name || 'Athlete'} — {inj.body_part}</span>
+                <span>{inj.profiles?.name || 'Athlete'} — {inj.body_part}</span>
                 <Badge variant="destructive">{inj.severity}</Badge>
               </div>
             ))}
