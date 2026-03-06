@@ -21,10 +21,9 @@ export default function Login() {
     try {
       await signIn(email, password);
       toast.success('Welcome back!');
-      navigate('/');
+      // Navigation will happen via AuthContext state change + HomeRedirect
     } catch (err: any) {
       toast.error(err.message || 'Login failed');
-    } finally {
       setLoading(false);
     }
   };
