@@ -27,11 +27,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUserData = async (userId: string) => {
     const [roleRes, profileRes] = await Promise.all([
-      supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+      supabase.from('user_roles').select('role').eq('user_id', userId).limit(1).maybeSingle(),
       supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle(),
     ]);
-    if (roleRes.data) setRole(roleRes.data.role as UserRole);
-    if (profileRes.data) setProfile(profileRes.data);
+
+    const profileData = profileRes.data ?? null;
+    let resolvedRole: UserRole = (roleRes.data?.role as UserRole | undefined) ?? null;
+
+    // Auto-heal legacy accounts that have a team but no role row.
+    if (!resolvedRole && profileData?.team_id) {
+      const { error } = await supabase
+        .from('user_roles')
+        .upsert({ user_id: userId, role: 'athlete' }, { onConflict: 'user_id,role' });
+
+      if (!error) resolvedRole = 'athlete';
+    }
+
+    setRole(resolvedRole);
+    setProfile(profileData);
   };
 
   const refreshProfile = async () => {
@@ -39,28 +52,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchUserData(session.user.id);
-      }
-      setLoading(false);
-    });
+    let isMounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchUserData(session.user.id);
-      } else {
+    const applySession = (nextSession: Session | null) => {
+      setSession(nextSession);
+      const nextUser = nextSession?.user ?? null;
+      setUser(nextUser);
+
+      if (!nextUser) {
         setRole(null);
         setProfile(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      setLoading(true);
+      void fetchUserData(nextUser.id).finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    };
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted) applySession(session);
     });
 
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (isMounted) applySession(nextSession);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, name: string, role: 'coach' | 'athlete') => {
@@ -73,11 +96,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     if (error) throw error;
+
     if (data.user) {
-      await supabase.from('user_roles').insert({ user_id: data.user.id, role });
-      await supabase.from('profiles').update({ name }).eq('user_id', data.user.id);
+      const userId = data.user.id;
+
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .upsert({ user_id: userId, role }, { onConflict: 'user_id,role' });
+      if (roleError) throw roleError;
+
+      const { data: updatedProfile, error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ name, email: data.user.email ?? email })
+        .eq('user_id', userId)
+        .select('id')
+        .maybeSingle();
+
+      if (profileUpdateError) throw profileUpdateError;
+
+      if (!updatedProfile) {
+        const { error: profileInsertError } = await supabase
+          .from('profiles')
+          .insert({ user_id: userId, name, email: data.user.email ?? email });
+        if (profileInsertError) throw profileInsertError;
+      }
+
       setRole(role);
     }
+
     return data;
   };
 
